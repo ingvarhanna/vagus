@@ -281,7 +281,12 @@ let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || {
 };
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
-function dateKey(d) { return d.toISOString().split('T')[0]; }
+function dateKey(d) {
+  const yr = d.getFullYear();
+  const mo = String(d.getMonth()+1).padStart(2,'0');
+  const da = String(d.getDate()).padStart(2,'0');
+  return `${yr}-${mo}-${da}`;
+}
 function getMonday(d) {
   const x = new Date(d); const day = x.getDay()||7;
   x.setDate(x.getDate()-day+1); x.setHours(0,0,0,0); return x;
