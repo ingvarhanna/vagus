@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Hanna – Energibudsjett</title>
+<style>
+  :root {
+    --teal: #1D9E75;
+    --teal-light: #E1F5EE;
+    --teal-dark: #0F6E56;
+    --teal-deep: #085041;
+    --amber: #EF9F27;
+    --amber-light: #FAEEDA;
+    --amber-dark: #633806;
+    --red: #E24B4A;
+    --red-light: #FCEBEB;
+    --red-dark: #501313;
+    --bg: #F8F7F4;
+    --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.10);
+    --text: #1A1A18;
+    --text-muted: #6B6B68;
+    --text-faint: #A3A39E;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif; color: var(--text); }
+
+  #app { max-width: 430px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* NAV */
+  nav { display: flex; background: var(--surface); border-top: 0.5px solid var(--border); position: sticky; bottom: 0; z-index: 10; }
+  nav button { flex: 1; padding: 10px 0 12px; background: none; border: none; cursor: pointer; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--text-faint); transition: color 0.15s; }
+  nav button.active { color: var(--teal); }
+  nav button svg { width: 22px; height: 22px; stroke-width: 1.6; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* PAGES */
+  .page { display: none; flex: 1; overflow-y: auto; padding: 24px 16px 16px; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--surface); border-radius: var(--radius); padding: 16px 18px; border: 0.5px solid var(--border); margin-bottom: 12px; }
+  .card-label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  /* FEELING */
+  .feeling-row { display: flex; gap: 6px; }
+  .feeling-btn { flex: 1; height: 48px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--bg); cursor: pointer; font-size: 16px; font-weight: 500; color: var(--text-muted); transition: all 0.15s; }
+  .feeling-btn.sel-1 { border-color: var(--red); background: var(--red-light); color: var(--red); }
+  .feeling-btn.sel-2 { border-color: var(--amber); background: var(--amber-light); color: var(--amber-dark); }
+  .feeling-btn.sel-3 { border-color: #85B7EB; background: #E6F1FB; color: #0C447C; }
+  .feeling-btn.sel-4 { border-color: var(--teal); background: var(--teal-light); color: var(--teal-dark); }
+  .feeling-btn.sel-5 { border-color: var(--teal-deep); background: var(--teal-light); color: var(--teal-deep); }
+  .feeling-label { font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 8px; min-height: 16px; }
+
+  /* ENERGY BARS */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .stat-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+  .stat-value { font-size: 24px; font-weight: 500; margin-bottom: 8px; }
+  .stat-value span { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+  .bar-track { height: 5px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+  .bar-fill { height: 5px; border-radius: 5px; transition: width 0.4s ease; }
+  .bar-ok { background: var(--teal); }
+  .bar-warn { background: var(--amber); }
+  .bar-over { background: var(--red); }
+
+  /* PLAN LIST */
+  .plan-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 14px; }
+  .plan-row:last-child { border-bottom: none; }
+  .ep-badge { font-size: 12px; font-weight: 500; color: var(--teal-dark); background: var(--teal-light); padding: 2px 9px; border-radius: 20px; }
+  .ep-badge-warn { color: var(--amber-dark); background: var(--amber-light); }
+
+  /* WARNING BOX */
+  .warn-box { background: var(--amber-light); border-left: 3px solid var(--amber); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 12px; font-size: 13px; color: var(--amber-dark); line-height: 1.5; }
+  .warn-box.danger { background: var(--red-light); border-color: var(--red); color: var(--red-dark); }
+
+  /* WEEK VIEW */
+  .week-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .week-header h2 { font-size: 16px; font-weight: 500; }
+  .week-total { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+  .week-total.over { color: var(--red); }
+  .day-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; }
+  .day-card.today { border: 2px solid var(--teal); }
+  .day-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; }
+  .day-name-row { display: flex; align-items: center; gap: 8px; }
+  .today-badge { font-size: 11px; color: var(--teal-dark); background: var(--teal-light); padding: 1px 7px; border-radius: 10px; }
+  .day-cost { font-size: 13px; font-weight: 500; color: var(--text-faint); }
+  .day-cost.ok { color: var(--teal); }
+  .day-cost.over { color: var(--red); }
+  .day-body { border-top: 0.5px solid var(--border); padding: 10px 16px; display: none; }
+  .day-body.open { display: block; }
+  .day-act-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; }
+  .remove-btn { background: none; border: none; cursor: pointer; color: var(--text-faint); padding: 2px 4px; font-size: 16px; }
+  select.act-select { width: 100%; margin-top: 8px; font-size: 13px; padding: 8px 10px; border-radius: var(--radius-sm); border: 0.5px solid var(--border); background: var(--bg); color: var(--text); font-family: inherit; }
+
+  /* SETTINGS */
+  .settings-section { margin-bottom: 12px; }
+  .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+  .settings-row:last-child { border-bottom: none; }
+  input[type=number].small { width: 56px; text-align: center; font-size: 14px; padding: 5px 6px; border: 0.5px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-family: inherit; }
+  input[type=text].act-input { flex: 1; font-size: 13px; padding: 8px 10px; border: 0.5px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-family: inherit; }
+  .add-row { display: flex; gap: 8px; margin-top: 12px; }
+  .btn-add { padding: 8px 16px; background: var(--teal); color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-family: inherit; }
+  .btn-del { background: none; border: none; cursor: pointer; color: var(--text-faint); font-size: 16px; padding: 2px 4px; }
+
+  /* AI CHAT */
+  .chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 130px); }
+  .chat-messages { flex: 1; overflow-y: auto; padding-bottom: 8px; }
+  .msg { margin-bottom: 12px; }
+  .msg-ai .bubble { background: var(--surface); border: 0.5px solid var(--border); border-radius: 0 var(--radius) var(--radius) var(--radius); padding: 12px 14px; font-size: 14px; line-height: 1.6; color: var(--text); max-width: 90%; }
+  .msg-user .bubble { background: var(--teal); color: white; border-radius: var(--radius) 0 var(--radius) var(--radius); padding: 10px 14px; font-size: 14px; line-height: 1.6; margin-left: auto; max-width: 85%; }
+  .msg-role { font-size: 11px; color: var(--text-faint); margin-bottom: 4px; }
+  .msg-user .msg-role { text-align: right; }
+  .chat-input-row { display: flex; gap: 8px; padding-top: 10px; border-top: 0.5px solid var(--border); }
+  textarea.chat-input { flex: 1; font-size: 14px; padding: 10px 12px; border: 0.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: inherit; resize: none; height: 44px; max-height: 120px; line-height: 1.5; overflow-y: auto; }
+  .btn-send { width: 44px; height: 44px; background: var(--teal); color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .btn-send:disabled { background: var(--text-faint); cursor: default; }
+  .typing { display: flex; gap: 5px; align-items: center; padding: 12px 14px; background: var(--surface); border: 0.5px solid var(--border); border-radius: 0 var(--radius) var(--radius) var(--radius); width: 60px; }
+  .dot { width: 6px; height: 6px; background: var(--text-faint); border-radius: 50%; animation: bounce 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+
+  /* HEADER */
+  .page-header { margin-bottom: 20px; }
+  .page-header .date { font-size: 13px; color: var(--text-muted); }
+  .page-header h1 { font-size: 22px; font-weight: 500; margin-top: 4px; }
+  .empty-text { font-size: 13px; color: var(--text-faint); padding: 4px 0; }
+
+  /* CHEVRON */
+  .chev { display: inline-block; transition: transform 0.2s; font-size: 14px; color: var(--text-faint); }
+  .chev.open { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- PAGE: IDAG -->
+  <div class="page active" id="page-idag">
+    <div class="page-header">
+      <div class="date" id="today-date"></div>
+      <h1>God morgen, Hanna</h1>
+      <span id="sync-status" style="font-size:11px;color:var(--teal);opacity:0;transition:opacity 0.5s;display:block;margin-top:2px;"></span>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Hvordan gikk i går?</div>
+      <div class="feeling-row" id="yesterday-feeling-row"></div>
+      <div class="feeling-label" id="yesterday-feeling-label"></div>
+      <textarea id="yesterday-note" placeholder="Noe som påvirket i går?" rows="2" style="width:100%;margin-top:10px;font-size:14px;padding:8px 10px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-family:inherit;resize:none;line-height:1.5;"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Hvordan er kroppen i dag?</div>
+      <div class="feeling-row" id="feeling-row"></div>
+      <div class="feeling-label" id="feeling-label"></div>
+    </div>
+
+    <div class="card" id="note-card">
+      <div class="card-label">Noe som påvirker i dag?</div>
+      <textarea id="today-note" placeholder="Dårlig natt, uventet besøk, stressende samtale…" rows="2" style="width:100%;font-size:14px;padding:8px 10px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-family:inherit;resize:none;line-height:1.5;"></textarea>
+    </div>
+
+    <div class="stat-grid" id="stat-grid"></div>
+
+    <div class="card" id="today-plan-card">
+      <div class="card-label">Planlagt i dag</div>
+      <div id="today-plan-list"></div>
+    </div>
+
+    <div id="warn-area"></div>
+  </div>
+
+  <!-- PAGE: UKE -->
+  <div class="page" id="page-uke">
+    <div class="week-header">
+      <h2>Ukeplan</h2>
+      <div class="week-total" id="week-total-label"></div>
+    </div>
+    <div class="card" style="padding: 12px 16px; margin-bottom: 14px;">
+      <div class="bar-track"><div class="bar-fill" id="week-bar" style="width:0%"></div></div>
+    </div>
+    <div id="day-cards"></div>
+  </div>
+
+  <!-- PAGE: CHAT -->
+  <div class="page" id="page-chat">
+    <div class="chat-wrap">
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-row">
+        <textarea class="chat-input" id="chat-input" placeholder="Skriv til assistenten..." rows="1"></textarea>
+        <button class="btn-send" id="chat-send" title="Send">
+          <svg viewBox="0 0 24 24" stroke="white" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: INNSTILLINGER -->
+  <div class="page" id="page-innst">
+    <h2 style="font-size:16px;font-weight:500;margin-bottom:16px;">Innstillinger</h2>
+
+    <div class="card settings-section">
+      <div class="card-label">Airtable-tilkobling</div>
+      <div class="settings-row">
+        <label style="flex:1">API-nøkkel</label>
+        <input type="password" id="set-airtable-key" placeholder="pat..." style="flex:2;font-size:12px;padding:5px 8px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-family:inherit;">
+      </div>
+      <p style="font-size:11px;color:var(--text-faint);margin-top:8px;">Airtable Personal Access Token – lagres kun lokalt på denne enheten</p>
+    </div>
+
+    <div class="card settings-section">
+      <div class="card-label">Energibudsjett</div>
+      <div class="settings-row">
+        <label>Ukebudsjett (ep)</label>
+        <input type="number" class="small" id="set-week" min="5" max="60">
+      </div>
+      <div class="settings-row">
+        <label>Maks per dag (ep)</label>
+        <input type="number" class="small" id="set-day" min="1" max="20">
+      </div>
+      <p style="font-size:11px;color:var(--text-faint);margin-top:8px;">ep = energipoeng – juster til det som stemmer for deg</p>
+    </div>
+
+    <div class="card settings-section">
+      <div class="card-label">Aktiviteter og energikostnad</div>
+      <div id="act-list"></div>
+      <div class="add-row">
+        <input type="text" class="act-input" id="new-act-name" placeholder="Ny aktivitet">
+        <input type="number" class="small" id="new-act-cost" value="2" min="0" max="10">
+        <button class="btn-add" id="btn-add-act">Legg til</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <nav>
+    <button class="active" data-page="idag" onclick="switchPage('idag')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      I dag
+    </button>
+    <button data-page="uke" onclick="switchPage('uke')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Ukeplan
+    </button>
+    <button data-page="chat" onclick="switchPage('chat')">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Råd
+    </button>
+    <button data-page="innst" onclick="switchPage('innst')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Innstillinger
+    </button>
+  </nav>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'hanna-energi-v1';
+const DEFAULT_ACTIVITIES = [
+  {id:'a1',name:'Husarbeid',cost:3},
+  {id:'a2',name:'Sosialt/besøk',cost:4},
+  {id:'a3',name:'Handletur',cost:2},
+  {id:'a4',name:'Kjøring/ærend',cost:2},
+  {id:'a5',name:'Gåtur ute',cost:2},
+  {id:'a6',name:'Helgeaktivitet',cost:4},
+  {id:'a7',name:'Rolig hjemmedag',cost:1},
+  {id:'a8',name:'Ysterijobb',cost:3},
+  {id:'a9',name:'Barnekjøring',cost:2},
+];
+const FEELING_LABELS = ['','Veldig sliten','Sliten','Ok dag','Bra dag','Full energi'];
+const DAYS_LONG = ['Mandag','Tirsdag','Onsdag','Torsdag','Fredag','Lørdag','Søndag'];
+const NO_MONTHS = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+
+let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || {
+  weeklyBudget: 20, dayMax: 5,
+  activities: DEFAULT_ACTIVITIES,
+  plans: {}, feelings: {}
+};
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+function dateKey(d) { return d.toISOString().split('T')[0]; }
+function getMonday(d) {
+  const x = new Date(d); const day = x.getDay()||7;
+  x.setDate(x.getDate()-day+1); x.setHours(0,0,0,0); return x;
+}
+function getWeekDays(mon) {
+  return Array.from({length:7},(_,i)=>{ const d=new Date(mon); d.setDate(d.getDate()+i); return d; });
+}
+function actCost(id) { const a=state.activities.find(x=>x.id===id); return a?a.cost:0; }
+function dayTotal(dateStr) { return (state.plans[dateStr]||[]).reduce((s,id)=>s+actCost(id),0); }
+function weekTotal(mon) { return getWeekDays(mon).reduce((s,d)=>s+dayTotal(dateKey(d)),0); }
+
+// ─── PAGE SWITCH ──────────────────────────────────────────────────────────────
+function switchPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelector(`nav button[data-page="${id}"]`).classList.add('active');
+  if(id==='idag') renderIdag();
+  if(id==='uke') renderUke();
+  if(id==='innst') renderSettings();
+  if(id==='chat' && document.getElementById('chat-messages').children.length===0) initChat();
+}
+
+// ─── IDAG ────────────────────────────────────────────────────────────────────
+const today = new Date();
+const todayKey = dateKey(today);
+const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+const yesterdayKey = dateKey(yesterday);
+
+function renderFeelingRow(containerId, labelId, dateStr) {
+  const feeling = state.feelings[dateStr]||0;
+  const row = document.getElementById(containerId);
+  row.innerHTML = '';
+  [1,2,3,4,5].forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'feeling-btn' + (feeling===f?` sel-${f}`:'');
+    btn.textContent = f;
+    btn.onclick = () => {
+      state.feelings[dateStr]=f; save(); renderIdag();
+      if(getAirtableKey()) syncToAirtable();
+    };
+    row.appendChild(btn);
+  });
+  document.getElementById(labelId).textContent = feeling ? FEELING_LABELS[feeling] : '';
+}
+
+function renderIdag() {
+  const dayName = DAYS_LONG[today.getDay()===0?6:today.getDay()-1];
+  document.getElementById('today-date').textContent = `${dayName} ${today.getDate()}. ${NO_MONTHS[today.getMonth()]}`;
+
+  // I går
+  renderFeelingRow('yesterday-feeling-row', 'yesterday-feeling-label', yesterdayKey);
+
+  // I dag
+  renderFeelingRow('feeling-row', 'feeling-label', todayKey);
+
+  // I går – notat
+  const igårNoteEl = document.getElementById('yesterday-note');
+  igårNoteEl.value = state.notes?.[yesterdayKey] || '';
+  igårNoteEl.onchange = () => {
+    state.notes = state.notes || {};
+    state.notes[yesterdayKey] = igårNoteEl.value.trim();
+    save();
+    if(getAirtableKey()) syncToAirtable();
+  };
+
+  // I dag – notat
+  const noteEl = document.getElementById('today-note');
+  noteEl.value = state.notes?.[todayKey] || '';
+  noteEl.onchange = () => {
+    state.notes = state.notes || {};
+    state.notes[todayKey] = noteEl.value.trim();
+    save();
+    if(getAirtableKey()) syncToAirtable();
+  };
+
+  // Stats
+  const mon = getMonday(today);
+  const wTotal = weekTotal(mon);
+  const dTotal = dayTotal(todayKey);
+  const wPct = Math.min(100, Math.round(wTotal/state.weeklyBudget*100));
+  const dPct = Math.min(100, Math.round(dTotal/state.dayMax*100));
+  const wOver = wTotal>state.weeklyBudget, dOver = dTotal>state.dayMax;
+  const wClass = wOver?'bar-over':wPct>75?'bar-warn':'bar-ok';
+  const dClass = dOver?'bar-over':dPct>75?'bar-warn':'bar-ok';
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">I dag</div>
+      <div class="stat-value" style="color:${dOver?'var(--red)':'var(--text)'}">${dTotal}<span> / ${state.dayMax}</span></div>
+      <div class="bar-track"><div class="bar-fill ${dClass}" style="width:${dPct}%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Denne uken</div>
+      <div class="stat-value" style="color:${wOver?'var(--red)':'var(--text)'}">${wTotal}<span> / ${state.weeklyBudget}</span></div>
+      <div class="bar-track"><div class="bar-fill ${wClass}" style="width:${wPct}%"></div></div>
+    </div>`;
+
+  // Today plan
+  const plan = state.plans[todayKey]||[];
+  const list = document.getElementById('today-plan-list');
+  if(plan.length===0) {
+    list.innerHTML = '<p class="empty-text">Ingenting planlagt ennå – legg til i ukeplanen.</p>';
+  } else {
+    list.innerHTML = plan.map(id => {
+      const a = state.activities.find(x=>x.id===id); if(!a) return '';
+      const badgeClass = a.cost>=4?'ep-badge ep-badge-warn':'ep-badge';
+      return `<div class="plan-row"><span>${a.name}</span><span class="${badgeClass}">${a.cost} ep</span></div>`;
+    }).join('');
+  }
+
+  // Warnings
+  const warn = document.getElementById('warn-area');
+  warn.innerHTML = '';
+  if(dOver) {
+    warn.innerHTML += `<div class="warn-box danger">Du er over dagsbudsjettet (${dTotal}/${state.dayMax} ep). Vurder å flytte noe til en annen dag.</div>`;
+  } else if(wOver) {
+    warn.innerHTML += `<div class="warn-box">Ukebudsjettet er fullt (${wTotal}/${state.weeklyBudget} ep). Ikke legg til mer denne uken.</div>`;
+  } else if(wPct>75) {
+    warn.innerHTML += `<div class="warn-box">Du har brukt ${wTotal} av ${state.weeklyBudget} ep denne uken. Husk resten av dagene.</div>`;
+  }
+}
+
+// ─── UKE ─────────────────────────────────────────────────────────────────────
+let openDay = null;
+
+function renderUke() {
+  const mon = getMonday(today);
+  const wTotal = weekTotal(mon);
+  const wPct = Math.min(100, Math.round(wTotal/state.weeklyBudget*100));
+  const wOver = wTotal>state.weeklyBudget;
+
+  document.getElementById('week-total-label').textContent = `${wTotal} / ${state.weeklyBudget} ep`;
+  document.getElementById('week-total-label').className = 'week-total' + (wOver?' over':'');
+  const wBar = document.getElementById('week-bar');
+  wBar.style.width = wPct+'%';
+  wBar.className = 'bar-fill ' + (wOver?'bar-over':wPct>75?'bar-warn':'bar-ok');
+
+  const days = getWeekDays(mon);
+  const container = document.getElementById('day-cards');
+  container.innerHTML = '';
+
+  days.forEach((day, i) => {
+    const k = dateKey(day);
+    const plan = state.plans[k]||[];
+    const dTotal = dayTotal(k);
+    const isToday = k===todayKey;
+    const dOver = dTotal>state.dayMax;
+    const isOpen = openDay===k;
+
+    const card = document.createElement('div');
+    card.className = 'day-card' + (isToday?' today':'');
+
+    const todayBadge = isToday?`<span class="today-badge">i dag</span>`:'';
+    const costLabel = dTotal>0
+      ? `<span class="day-cost ${dOver?'over':'ok'}">${dTotal}/${state.dayMax} ep</span>`
+      : `<span class="day-cost">—</span>`;
+
+    const actOptions = state.activities.map(a=>`<option value="${a.id}">${a.name} (${a.cost} ep)</option>`).join('');
+    const actRows = plan.map((id,idx)=>{
+      const a=state.activities.find(x=>x.id===id); if(!a) return '';
+      return `<div class="day-act-row"><span>${a.name}</span><div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;color:var(--text-muted)">${a.cost} ep</span><button class="remove-btn" onclick="removeAct('${k}',${idx})">×</button></div></div>`;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="day-header" onclick="toggleDay('${k}')">
+        <div class="day-name-row">
+          <span style="font-size:14px;font-weight:${isToday?'500':'400'}">${DAYS_LONG[i]}</span>
+          ${todayBadge}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${costLabel}
+          <span class="chev ${isOpen?'open':''}">▾</span>
+        </div>
+      </div>
+      <div class="day-body ${isOpen?'open':''}">
+        ${actRows}
+        <select class="act-select" onchange="addAct('${k}',this)">
+          <option value="">+ Legg til aktivitet</option>
+          ${actOptions}
+        </select>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function toggleDay(k) {
+  openDay = openDay===k ? null : k;
+  renderUke();
+}
+
+function addAct(dateStr, sel) {
+  if(!sel.value) return;
+  state.plans[dateStr] = [...(state.plans[dateStr]||[]), sel.value];
+  save(); renderUke();
+  if(dateStr===todayKey) renderIdag();
+}
+
+function removeAct(dateStr, idx) {
+  state.plans[dateStr] = (state.plans[dateStr]||[]).filter((_,i)=>i!==idx);
+  save(); renderUke();
+  if(dateStr===todayKey) renderIdag();
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+function renderSettings() {
+  document.getElementById('set-week').value = state.weeklyBudget;
+  document.getElementById('set-day').value = state.dayMax;
+  document.getElementById('set-week').onchange = e => { state.weeklyBudget=parseInt(e.target.value)||1; save(); };
+  document.getElementById('set-day').onchange = e => { state.dayMax=parseInt(e.target.value)||1; save(); };
+
+  const keyEl = document.getElementById('set-airtable-key');
+  keyEl.value = state.airtableKey || '';
+  keyEl.onchange = e => { state.airtableKey = e.target.value.trim(); save(); };
+
+  const list = document.getElementById('act-list');
+  list.innerHTML = state.activities.map(a=>`
+    <div class="settings-row">
+      <span style="flex:1">${a.name}</span>
+      <input type="number" class="small" value="${a.cost}" min="0" max="10"
+        onchange="updateActCost('${a.id}',this.value)" style="margin-right:8px">
+      <button class="btn-del" onclick="deleteAct('${a.id}')">×</button>
+    </div>`).join('');
+
+  document.getElementById('btn-add-act').onclick = () => {
+    const name = document.getElementById('new-act-name').value.trim();
+    const cost = parseInt(document.getElementById('new-act-cost').value)||0;
+    if(!name) return;
+    state.activities.push({id:'c'+Date.now(), name, cost});
+    save(); renderSettings();
+    document.getElementById('new-act-name').value='';
+    document.getElementById('new-act-cost').value='2';
+  };
+}
+
+function updateActCost(id, val) {
+  state.activities = state.activities.map(a=>a.id===id?{...a,cost:parseInt(val)||0}:a);
+  save();
+}
+function deleteAct(id) {
+  state.activities = state.activities.filter(a=>a.id!==id);
+  save(); renderSettings();
+}
+
+// ─── AIRTABLE SYNC ───────────────────────────────────────────────────────────
+const AIRTABLE_BASE = 'appOW99L0MrEFYcDN';
+const AIRTABLE_TABLE = 'tblDfBWEXU102clTw';
+const AIRTABLE_FIELDS = {
+  dato: 'fldyB9eTfFPbmHabG',
+  kropp: 'fldgbtwM3SDz7mUCa',
+  notat: 'fldJ8U3fVun6XYgY2',
+  aktiviteter: 'fld3Jf2BmdmTchBOf',
+  epBrukt: 'fldXoaoDCce53eZaY',
+  dagsBudsjett: 'fldis83jSaOUmuP1r',
+  ukeBrukt: 'fldi6UWQuYrTmm2tE',
+  ukeBudsjett: 'fld1KP6k4DzBgseC8',
+  vurderingIgar: 'fld2QzlWli1MrRRnO',
+  notatIgar: 'fldl6WiD4NGOZgxtc',
+};
+
+let airtableSyncTimer = null;
+
+async function syncToAirtable() {
+  clearTimeout(airtableSyncTimer);
+  airtableSyncTimer = setTimeout(async () => {
+    try {
+      const mon = getMonday(today);
+      const wTotal = weekTotal(mon);
+      const dTotal = dayTotal(todayKey);
+      const plan = state.plans[todayKey] || [];
+      const actNames = plan.map(id => {
+        const a = state.activities.find(x => x.id === id);
+        return a ? `${a.name} (${a.cost}ep)` : '';
+      }).filter(Boolean).join(', ');
+
+      // ── Skriv dagens rad ──
+      const todayFields = {
+        [AIRTABLE_FIELDS.dato]: todayKey,
+        [AIRTABLE_FIELDS.kropp]: state.feelings[todayKey] || null,
+        [AIRTABLE_FIELDS.notat]: state.notes?.[todayKey] || '',
+        [AIRTABLE_FIELDS.aktiviteter]: actNames,
+        [AIRTABLE_FIELDS.epBrukt]: dTotal,
+        [AIRTABLE_FIELDS.dagsBudsjett]: state.dayMax,
+        [AIRTABLE_FIELDS.ukeBrukt]: wTotal,
+        [AIRTABLE_FIELDS.ukeBudsjett]: state.weeklyBudget,
+      };
+      await upsertAirtable(todayKey, todayFields);
+
+      // ── Skriv "vurdering av i går" til gårsdagens rad ──
+      const igarScore = state.feelings[yesterdayKey];
+      const igarNotat = state.notes?.[yesterdayKey] || '';
+      if (igarScore || igarNotat) {
+        await upsertAirtable(yesterdayKey, {
+          [AIRTABLE_FIELDS.dato]: yesterdayKey,
+          ...(igarScore ? {[AIRTABLE_FIELDS.vurderingIgar]: igarScore} : {}),
+          ...(igarNotat ? {[AIRTABLE_FIELDS.notatIgar]: igarNotat} : {}),
+        });
+      }
+
+      showSyncStatus('✓ Lagret');
+    } catch(e) {
+      showSyncStatus('Synk feilet');
+    }
+  }, 2000);
+}
+
+async function upsertAirtable(datoStr, fields) {
+  const headers = { 'Authorization': `Bearer ${getAirtableKey()}`, 'Content-Type': 'application/json' };
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`;
+  const searchRes = await fetch(
+    `${url}?filterByFormula=${encodeURIComponent(`{${AIRTABLE_FIELDS.dato}}='${datoStr}'`)}&maxRecords=1`,
+    { headers: { 'Authorization': `Bearer ${getAirtableKey()}` } }
+  );
+  const searchData = await searchRes.json();
+  if (searchData.records && searchData.records.length > 0) {
+    await fetch(`${url}/${searchData.records[0].id}`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ fields })
+    });
+  } else {
+    await fetch(url, {
+      method: 'POST', headers,
+      body: JSON.stringify({ records: [{ fields }] })
+    });
+  }
+}
+
+function getAirtableKey() {
+  return state.airtableKey || '';
+}
+
+function showSyncStatus(msg) {
+  let el = document.getElementById('sync-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 3000);
+}
+
+// ─── AI CHAT ─────────────────────────────────────────────────────────────────
+let chatHistory = [];
+let chatLoading = false;
+let historikkCache = null; // Cacher Airtable-historikk per økt
+
+// Hent siste 14 dager fra begge Airtable-tabeller
+async function hentHistorikk() {
+  if (!getAirtableKey()) return null;
+  if (historikkCache) return historikkCache;
+
+  const headers = { 'Authorization': `Bearer ${getAirtableKey()}` };
+  const base = AIRTABLE_BASE;
+
+  try {
+    // Daglig logg – siste 14 rader sortert nyest først
+    const loggRes = await fetch(
+      `https://api.airtable.com/v0/${base}/${AIRTABLE_TABLE}?pageSize=14&sort[0][field]=${AIRTABLE_FIELDS.dato}&sort[0][direction]=desc`,
+      { headers }
+    );
+    const loggData = await loggRes.json();
+    const loggRader = (loggData.records || []).map(r => r.fields);
+
+    // Garmin HRV/søvn – siste 14 rader
+    const GARMIN_TABLE = 'tbltyCtCtPrjy1loS';
+    const garminRes = await fetch(
+      `https://api.airtable.com/v0/${base}/${GARMIN_TABLE}?pageSize=14&sort[0][field]=fldvJ3Ajqnl22HvZ8&sort[0][direction]=desc`,
+      { headers }
+    );
+    const garminData = await garminRes.json();
+    const garminRader = (garminData.records || []).map(r => r.fields);
+
+    historikkCache = { logg: loggRader, garmin: garminRader };
+    return historikkCache;
+  } catch(e) {
+    console.warn('Kunne ikke hente historikk:', e);
+    return null;
+  }
+}
+
+function formaterHistorikk(historikk) {
+  if (!historikk) return '';
+
+  // Slå sammen logg og garmin på dato
+  const garminMap = {};
+  (historikk.garmin || []).forEach(r => { if(r.Dato) garminMap[r.Dato] = r; });
+
+  const linjer = (historikk.logg || []).map(r => {
+    const dato = r.Dato || '?';
+    const kropp = r['Kroppsfølelse'] ? `morgen:${r['Kroppsfølelse']}` : '';
+    const igar = r['Vurdering av i går'] ? `dagsresultat:${r['Vurdering av i går']}` : '';
+    const igarNotat = r['Notat i går'] ? `notat-igar:"${r['Notat i går']}"` : '';
+    const ep = r['Energipoeng brukt'] != null ? `ep:${r['Energipoeng brukt']}/${r['Dagsbudsjett']||'?'}` : '';
+    const notat = r['Notat'] ? `notat:"${r['Notat']}"` : '';
+    const akt = r['Aktiviteter'] ? `aktiviteter:${r['Aktiviteter']}` : '';
+    const g = garminMap[dato];
+    const hrv = g?.['HRV natt (ms)'] ? `hrv:${g['HRV natt (ms)']}ms` : '';
+    const sovn = g?.['Søvnlengde (min)'] ? `søvn:${Math.round(g['Søvnlengde (min)']/60*10)/10}t` : '';
+    const deler = [dato, kropp, igar, ep, hrv, sovn, akt, notat, igarNotat].filter(Boolean);
+    return deler.join(' | ');
+  });
+
+  return linjer.length ? linjer.join('\n') : 'Ingen historikk ennå.';
+}
+
+function buildSystemPrompt(historikk) {
+  const mon = getMonday(today);
+  const days = getWeekDays(mon);
+  const dayName = DAYS_LONG[today.getDay()===0?6:today.getDay()-1];
+  const feeling = state.feelings[todayKey]||0;
+  const feelingText = feeling ? FEELING_LABELS[feeling] : 'ikke registrert ennå';
+  const wTotal = weekTotal(mon);
+
+  const weekPlan = days.map((d,i)=>{
+    const k=dateKey(d); const plan=state.plans[k]||[];
+    const acts=plan.map(id=>{const a=state.activities.find(x=>x.id===id);return a?`${a.name}(${a.cost}ep)`:''}).filter(Boolean).join(', ');
+    const dTotal=dayTotal(k);
+    const marker = k===todayKey?' ← I DAG':'';
+    return `${DAYS_LONG[i]}${marker}: ${acts||'ingenting'} | totalt ${dTotal}ep`;
+  }).join('\n');
+
+  const todayNote = state.notes?.[todayKey] ? `\n- Hannas notat i dag: "${state.notes[todayKey]}"` : '';
+  const historikkTekst = historikk ? `\n\nHISTORIKK SISTE 14 DAGER (nyest først):
+Format per dag: dato | morgen=kroppsfølelse ved oppvåkning | dagsresultat=vurdering av dagen registrert neste morgen | ep=energipoeng brukt/budsjett | hrv | søvn | aktiviteter | notater
+${formaterHistorikk(historikk)}
+
+Bruk historikken aktivt:
+- Se om høy aktivitet én dag gir lavt dagsresultat dagen etter (PEM-mønster)
+- Sammenlign morgen-score med dagsresultat – stemmer de overens?
+- Se om spesifikke aktiviteter går igjen før dårlige dager
+- Nevn konkrete datoer når du peker på mønstre` : '';
+
+  return `Du er en varm, tydelig og kunnskapsrik assistent for Hanna, som er sykmeldt med utmattelse.
+
+VIKTIG KONTEKST OM HANNA:
+- Hun er sykmeldt med utmattelse og sliter med energiregulering
+- Hun har et klassisk forsinket PEM-mønster: busy helg → krasj mandag
+- Hun vet hva som koster energi, men gir for mye av seg selv og sliter med å sette grenser
+- Verktøyet hjelper henne planlegge PROAKTIVT – ikke reagere i etterkant
+- HRV-data over 1 år viser at hun opererer stabilt lavt (33–39ms) – nervesystemet er i en beskyttet lavtilstand
+- HRV er et LAGGING signal for Hanna – bruk det som bakspeil, ikke som grønt/rødt lys for i dag
+
+SLIK KOMMUNISERER DU:
+- Varm, positiv og oppmuntrende – Hanna gjør noe bra ved å bruke dette verktøyet
+- Tydelig og konkret, alltid med begrunnelse – ikke vag eller unnvikende
+- Alltid på norsk
+- Anerkjenn gode valg og fremgang, selv små steg teller
+- Aldri mer enn 3-4 setninger per respons – kort er bedre
+- Ikke bruk fagord uten å forklare dem
+- Advar om overbelastning på en støttende måte – ikke som kritikk, men som omsorg
+- Når du ser mønstre, presenter dem som innsikt hun kan bruke – ikke som feil hun har gjort
+- Avslutt gjerne med én konkret, positiv ting hun kan gjøre
+
+DAGENS STATUS:
+- Dato: ${dayName} ${today.getDate()}. ${NO_MONTHS[today.getMonth()]}
+- Hannas kroppsfølelse i dag: ${feelingText}${todayNote}
+- Dagsbudsjett: ${dayTotal(todayKey)} / ${state.dayMax} ep
+- Ukebudsjett: ${wTotal} / ${state.weeklyBudget} ep
+
+UKEPLAN:
+${weekPlan}${historikkTekst}
+
+Begynn med én konkret observasjon – enten om ukesplanen eller et mønster du ser i historikken.`;
+}
+
+async function initChat() {
+  chatHistory = [];
+  historikkCache = null;
+  const msgs = document.getElementById('chat-messages');
+  msgs.innerHTML = '';
+
+  // Vis laster-melding mens vi henter historikk
+  const laster = document.createElement('div');
+  laster.className = 'msg msg-ai';
+  laster.innerHTML = `<div class="msg-role">Assistent</div><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  msgs.appendChild(laster);
+
+  const historikk = await hentHistorikk();
+  laster.remove();
+
+  sendAI('Hei Hanna! Gi meg et raskt blikk på ukesplanen min og si fra om det er noe jeg bør tenke på.', true, historikk);
+}
+
+function addMessage(role, text) {
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `msg msg-${role}`;
+  const roleLabel = role==='ai' ? 'Assistent' : 'Hanna';
+  div.innerHTML = `<div class="msg-role">${roleLabel}</div><div class="bubble">${text.replace(/\n/g,'<br>')}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addTyping() {
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg msg-ai'; div.id = 'typing-indicator';
+  div.innerHTML = `<div class="msg-role">Assistent</div><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if(t) t.remove();
+}
+
+async function sendAI(userText, isInit, historikk) {
+  if(!isInit) {
+    chatHistory.push({role:'user', content: userText});
+    addMessage('user', userText);
+  }
+  chatLoading = true;
+  document.getElementById('chat-send').disabled = true;
+  addTyping();
+
+  const messages = isInit
+    ? [{role:'user', content: userText}]
+    : chatHistory;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 500,
+        system: buildSystemPrompt(historikk || historikkCache),
+        messages: messages
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Beklager, noe gikk galt.';
+    removeTyping();
+    addMessage('ai', reply);
+    if(!isInit) chatHistory.push({role:'assistant', content: reply});
+  } catch(e) {
+    removeTyping();
+    addMessage('ai', 'Kunne ikke koble til. Sjekk internettforbindelsen og prøv igjen.');
+  }
+  chatLoading = false;
+  document.getElementById('chat-send').disabled = false;
+}
+
+// ─── CHAT INPUT ───────────────────────────────────────────────────────────────
+document.getElementById('chat-send').onclick = () => {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text || chatLoading) return;
+  input.value = '';
+  input.style.height = '44px';
+  sendAI(text, false, null);
+};
+
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('chat-send').click(); }
+});
+
+document.getElementById('chat-input').addEventListener('input', function() {
+  this.style.height = '44px';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderIdag();
+</script>
+</body>
+</html>
